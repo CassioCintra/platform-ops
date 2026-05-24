@@ -1,0 +1,149 @@
+name: Reusable — pipeline notification
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        description: 'Service name to include in the notification'
+        required: true
+        type: string
+      image-tag:
+        description: 'Image tag that was published (e.g. v1.2.3)'
+        required: false
+        type: string
+        default: ''
+      overall-status:
+        description: 'Overall pipeline result: success, failure or cancelled'
+        required: true
+        type: string
+      tests-result:
+        description: 'Result of the quality/tests job'
+        required: false
+        type: string
+        default: 'skipped'
+      quality-result:
+        description: 'Result of the sonar/coverage job'
+        required: false
+        type: string
+        default: 'skipped'
+      security-result:
+        description: 'Result of the security job'
+        required: false
+        type: string
+        default: 'skipped'
+      migration-result:
+        description: 'Result of the db-migration job'
+        required: false
+        type: string
+        default: 'skipped'
+      cd-result:
+        description: 'Result of the cd job'
+        required: false
+        type: string
+        default: 'skipped'
+      notify-slack:
+        description: 'Send notification to Slack'
+        required: false
+        type: boolean
+        default: false
+      notify-teams:
+        description: 'Send notification to Microsoft Teams'
+        required: false
+        type: boolean
+        default: false
+      notify-discord:
+        description: 'Send notification to Discord'
+        required: false
+        type: boolean
+        default: false
+
+# No secrets block — all webhook URLs come from the
+# "notifications" environment defined in order-platform-infra.
+# Callers do not need to pass any secrets for notifications.
+
+jobs:
+  notify:
+    name: Send pipeline notification
+    runs-on: ubuntu-latest
+    environment: notifications
+
+    steps:
+      - name: Checkout infra repo (for discord scripts)
+        if: inputs.notify-discord
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository }}
+          ref: main
+
+      - name: Make discord scripts executable
+        if: inputs.notify-discord
+        run: chmod +x scripts/discord/*.sh
+
+      - name: Build Slack/Teams payload
+        id: payload
+        run: |
+          if [ "${{ inputs.overall-status }}" = "success" ]; then
+            echo "icon=:white_check_mark:" >> $GITHUB_OUTPUT
+            echo "color=#2EA44F" >> $GITHUB_OUTPUT
+            echo "title=Deploy succeeded - ${{ inputs.service-name }} ${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "icon=:x:" >> $GITHUB_OUTPUT
+            echo "color=#CF222E" >> $GITHUB_OUTPUT
+            echo "title=Pipeline failed - ${{ inputs.service-name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify Slack
+        if: inputs.notify-slack
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "${{ steps.payload.outputs.color }}",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "${{ steps.payload.outputs.icon }} *${{ steps.payload.outputs.title }}*\n*Repo:* <${{ github.server_url }}/${{ github.repository }}|${{ github.repository }}>\n*Branch:* `${{ github.ref_name }}`\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View pipeline>"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Microsoft Teams
+        if: inputs.notify-teams
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "title": "${{ steps.payload.outputs.title }}",
+              "text": "**Repo:** [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}) | **Branch:** `${{ github.ref_name }}` | **Commit:** `${{ github.sha }}` | [View pipeline](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            }' \
+            "${{ vars.TEAMS_WEBHOOK_URL }}"
+
+      - name: Notify Discord
+        if: inputs.notify-discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
+          SERVICE_NAME:        ${{ inputs.service-name }}
+          IMAGE_TAG:           ${{ inputs.image-tag }}
+          OVERALL_STATUS:      ${{ inputs.overall-status }}
+          TESTS_RESULT:        ${{ inputs.tests-result }}
+          QUALITY_RESULT:      ${{ inputs.quality-result }}
+          SECURITY_RESULT:     ${{ inputs.security-result }}
+          MIGRATION_RESULT:    ${{ inputs.migration-result }}
+          CD_RESULT:           ${{ inputs.cd-result }}
+          REPO:                ${{ github.repository }}
+          BRANCH:              ${{ github.ref_name }}
+          COMMIT_SHA:          ${{ github.sha }}
+          RUN_URL:             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: ./scripts/discord/send-discord.sh
+
+

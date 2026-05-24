@@ -1,0 +1,90 @@
+name: Reusable — database migration validation
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: 'Java version used to build the service'
+        required: false
+        type: string
+        default: '21'
+      postgres-version:
+        description: 'PostgreSQL version to validate migrations against'
+        required: false
+        type: string
+        default: '16'
+      migration-tool:
+        description: 'Migration tool used by the service (flyway or liquibase)'
+        required: false
+        type: string
+        default: 'flyway'
+
+env:
+  MIGRATION_DB: migration_test
+  MIGRATION_USER: migration_user
+  MIGRATION_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  validate-migrations:
+    name: Validate DB migrations (${{ inputs.migration-tool }})
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:${{ inputs.postgres-version }}-alpine
+        env:
+          POSTGRES_DB: migration_test
+          POSTGRES_USER: migration_user
+          POSTGRES_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U migration_user -d migration_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK ${{ inputs.java-version }}
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: temurin
+          cache: maven
+
+      - name: Run migrations (Flyway)
+        if: inputs.migration-tool == 'flyway'
+        run: |
+          ./mvnw -B flyway:migrate \
+            -Dflyway.url=jdbc:postgresql://localhost:5432/${{ env.MIGRATION_DB }} \
+            -Dflyway.user=${{ env.MIGRATION_USER }} \
+            -Dflyway.password=${{ env.MIGRATION_PASSWORD }} \
+            -Dflyway.locations=classpath:db/migration
+
+      - name: Run migrations (Liquibase)
+        if: inputs.migration-tool == 'liquibase'
+        run: |
+          ./mvnw -B liquibase:update \
+            -Dliquibase.url=jdbc:postgresql://localhost:5432/${{ env.MIGRATION_DB }} \
+            -Dliquibase.username=${{ env.MIGRATION_USER }} \
+            -Dliquibase.password=${{ env.MIGRATION_PASSWORD }}
+
+      - name: Validate migration idempotency (re-run)
+        if: inputs.migration-tool == 'flyway'
+        run: |
+          ./mvnw -B flyway:migrate \
+            -Dflyway.url=jdbc:postgresql://localhost:5432/${{ env.MIGRATION_DB }} \
+            -Dflyway.user=${{ env.MIGRATION_USER }} \
+            -Dflyway.password=${{ env.MIGRATION_PASSWORD }} \
+            -Dflyway.locations=classpath:db/migration
+
+      - name: Check migration integrity
+        if: inputs.migration-tool == 'flyway'
+        run: |
+          ./mvnw -B flyway:validate \
+            -Dflyway.url=jdbc:postgresql://localhost:5432/${{ env.MIGRATION_DB }} \
+            -Dflyway.user=${{ env.MIGRATION_USER }} \
+            -Dflyway.password=${{ env.MIGRATION_PASSWORD }}

@@ -14,13 +14,13 @@ on:
         type: boolean
         default: true
       coverage-minimum:
-        description: 'Minimum line coverage percentage required to pass (0–100)'
+        description: 'Minimum line coverage percentage required to pass (0-100)'
         required: false
         type: number
         default: 90
     secrets:
       SONAR_TOKEN:
-        description: 'SonarCloud token for static analysis'
+        description: 'SonarQube Cloud token for static analysis'
         required: false
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run hadolint
         uses: hadolint/hadolint-action@v3.1.0
@@ -47,10 +47,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up JDK ${{ inputs.java-version }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: ${{ inputs.java-version }}
           distribution: temurin
@@ -64,7 +64,7 @@ jobs:
         if: always()
         with:
           report_paths: '**/target/surefire-reports/TEST-*.xml'
-          check_name: Test report — ${{ github.repository }}
+          check_name: Test report - ${{ github.repository }}
 
       - name: Check coverage threshold
         uses: madrapps/jacoco-report@v1.6.1
@@ -79,35 +79,35 @@ jobs:
           fail-emoji: ':x:'
 
       - name: Upload coverage report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: coverage-report
           path: target/site/jacoco/
           retention-days: 7
 
-  # ── Job 3: static analysis (SonarCloud) ─────────────────────────────────────
+  # ── Job 3: static analysis (SonarQube Cloud) ────────────────────────────────
   sonar:
-    name: Static analysis (SonarCloud)
+    name: Static analysis (SonarQube Cloud)
     runs-on: ubuntu-latest
     needs: tests
     if: inputs.enable-tests && secrets.SONAR_TOKEN != ''
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up JDK ${{ inputs.java-version }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: ${{ inputs.java-version }}
           distribution: temurin
           cache: maven
 
-      - name: Analyze with SonarCloud
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: Analyze with SonarQube Cloud
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

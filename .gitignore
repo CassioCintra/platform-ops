@@ -1,0 +1,21 @@
+# Local environment variables
+.env
+.env.local
+*.env
+
+# Container persistent data
+docker/postgres/data/
+docker/kafka/data/
+docker/keycloak/data/
+
+# Logs
+*.log
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

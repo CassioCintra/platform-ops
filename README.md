@@ -15,10 +15,18 @@ order-platform-infra/
 │       └── realm/                       # Realm auto-imported on start-dev
 │           └── order-platform-realm.json
 ├── .github/
+│   ├── renovate.json                    # Renovate config for automated dependency updates
 │   └── workflows/
 │       ├── ci-infra.yml                 # Validates docker-compose on every push
-│       └── cd-services.yml              # Builds and pushes images (manual trigger)
-├── docs/                                # Architecture Decision Records (ADRs)
+│       ├── dependency-update.yml        # Runs Renovate every Monday
+│       ├── stale.yml                    # Closes stale issues and PRs every Monday
+│       ├── reusable-cd.yml              # Reusable: build, tag and push image
+│       ├── reusable-quality.yml         # Reusable: lint, tests, coverage, Sonar
+│       ├── reusable-security.yml        # Reusable: secrets, vulnerabilities, licenses
+│       ├── reusable-db-migration.yml    # Reusable: validate DB migrations
+│       └── reusable-notify.yml          # Reusable: Slack and Teams notifications
+├── docs/
+│   └── how-to-use-reusable-workflows.md # Usage guide and pipeline.yml example
 ├── docker-compose.yml                   # Full stack definition
 ├── .env.example                         # Required variables — copy to .env
 └── README.md
@@ -60,6 +68,10 @@ docker compose --profile services up -d
 
 ## Development users (Keycloak)
 
+> **Warning:** The credentials below are for local development only.
+> Never use these users, passwords, or client secrets in staging or production environments.
+> In non-local environments, provision users and secrets through a secrets manager.
+
 | Username    | Password   | Roles                  |
 |-------------|------------|------------------------|
 | `dev-admin` | `admin123` | admin, beta-user, user |
@@ -75,18 +87,27 @@ Profiles separate infrastructure from application services:
 
 This allows each developer to run application services locally via their IDE while using only the Compose infra.
 
-## CI/CD
+## CI/CD pipelines
 
-| Workflow          | Trigger             | What it does                                    |
-|-------------------|---------------------|-------------------------------------------------|
-| `ci-infra.yml`    | push / pull_request | Validates syntax and healthchecks docker-compose |
-| `cd-services.yml` | manual dispatch     | Builds and pushes images to GitHub Registry     |
+| Workflow                    | Trigger             | What it does                                          |
+|-----------------------------|---------------------|-------------------------------------------------------|
+| `ci-infra.yml`              | push / pull_request | Validates docker-compose syntax and healthchecks      |
+| `stale.yml`                 | Every Monday 09h    | Marks and closes stale issues and PRs                 |
+| `dependency-update.yml`     | Every Monday 08h    | Opens PRs via Renovate for outdated actions and images |
+| `reusable-quality.yml`      | called by services  | Lint, tests, coverage threshold, SonarQube Cloud      |
+| `reusable-security.yml`     | called by services  | Gitleaks, Trivy (fs + image), license compliance      |
+| `reusable-db-migration.yml` | called by services  | Flyway/Liquibase validation against ephemeral Postgres |
+| `reusable-cd.yml`           | called by services  | Semver tag, pom.xml bump, Docker image build and push |
+| `reusable-notify.yml`       | called by services  | Slack and/or Teams pipeline result notification        |
+
+See `docs/how-to-use-reusable-workflows.md` for the full usage guide and a `pipeline.yml` example.
 
 ## Adding a new service
 
 1. Add the service in `docker-compose.yml` with `profiles: [services]`
 2. Add its environment variables to `.env.example`
 3. Update this README with the port
+4. Create a `pipeline.yml` in the service repo following the guide in `docs/`
 
 ## Architecture decisions
 

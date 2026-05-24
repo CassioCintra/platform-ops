@@ -1,0 +1,100 @@
+name: Reusable — security checks
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        description: 'Service name — must match the image name in GHCR'
+        required: true
+        type: string
+      image-tag:
+        description: 'Image tag to scan (e.g. v1.2.3). Defaults to latest.'
+        required: false
+        type: string
+        default: 'latest'
+      fail-on-severity:
+        description: 'Minimum severity that fails the pipeline (UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL)'
+        required: false
+        type: string
+        default: 'HIGH'
+    secrets:
+      GHCR_TOKEN:
+        description: 'GitHub token to pull the image from GHCR'
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  ORG: ${{ github.repository_owner }}
+
+jobs:
+  # ── Job 1: secret detection in source code ───────────────────────────────────
+  secret-scan:
+    name: Secret detection (Gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # ── Job 2: dependency vulnerability scan ────────────────────────────────────
+  dependency-scan:
+    name: Dependency vulnerability scan (Trivy — filesystem)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy on filesystem
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          severity: ${{ inputs.fail-on-severity }},CRITICAL
+          exit-code: '1'
+
+      - name: Upload filesystem scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-filesystem
+
+  # ── Job 3: Docker image vulnerability scan ───────────────────────────────────
+  image-scan:
+    name: Image vulnerability scan (Trivy — image)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Run Trivy on image
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ inputs.service-name }}:${{ inputs.image-tag }}
+          format: sarif
+          output: trivy-image.sarif
+          severity: ${{ inputs.fail-on-severity }},CRITICAL
+          exit-code: '1'
+
+      - name: Upload image scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image

@@ -1,0 +1,53 @@
+{
+  "realm": "order-platform",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "admin",     "description": "Platform administrator" },
+      { "name": "beta-user", "description": "User with early access to features" },
+      { "name": "user",      "description": "Standard user" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "order-service",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "secret": "order-service-secret"
+    },
+    {
+      "clientId": "dashboard-service",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "secret": "dashboard-service-secret"
+    }
+  ],
+  "users": [
+    {
+      "username": "dev-admin",
+      "enabled": true,
+      "email": "admin@order-platform.local",
+      "credentials": [{ "type": "password", "value": "admin123", "temporary": false }],
+      "realmRoles": ["admin", "beta-user", "user"]
+    },
+    {
+      "username": "dev-beta",
+      "enabled": true,
+      "email": "beta@order-platform.local",
+      "credentials": [{ "type": "password", "value": "beta123", "temporary": false }],
+      "realmRoles": ["beta-user", "user"]
+    },
+    {
+      "username": "dev-user",
+      "enabled": true,
+      "email": "user@order-platform.local",
+      "credentials": [{ "type": "password", "value": "user123", "temporary": false }],
+      "realmRoles": ["user"]
+    }
+  ]
+}

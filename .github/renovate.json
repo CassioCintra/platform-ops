@@ -1,0 +1,50 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["every weekend"],
+  "prHourlyLimit": 5,
+  "prConcurrentLimit": 10,
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Group all GitHub Actions updates into a single PR",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "automerge": false
+    },
+    {
+      "description": "Group all Docker image updates into a single PR",
+      "matchManagers": ["docker-compose"],
+      "groupName": "Docker images",
+      "automerge": false
+    },
+    {
+      "description": "Group all Maven dependency updates into a single PR",
+      "matchManagers": ["maven"],
+      "groupName": "Maven dependencies",
+      "automerge": false
+    },
+    {
+      "description": "Auto-merge patch updates for GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Auto-merge patch updates for Maven dependencies",
+      "matchManagers": ["maven"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Never auto-merge security-sensitive actions (Trivy, Gitleaks, Sonar)",
+      "matchPackageNames": [
+        "aquasecurity/trivy-action",
+        "gitleaks/gitleaks-action",
+        "SonarSource/sonarqube-scan-action"
+      ],
+      "automerge": false,
+      "labels": ["dependencies", "security"]
+    }
+  ]
+}

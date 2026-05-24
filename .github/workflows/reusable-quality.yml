@@ -18,6 +18,11 @@ on:
         required: false
         type: number
         default: 90
+      enable-sonar:
+        description: 'Whether to run SonarQube Cloud analysis. Set to false if SONAR_TOKEN is not configured.'
+        required: false
+        type: boolean
+        default: false
     secrets:
       SONAR_TOKEN:
         description: 'SonarQube Cloud token for static analysis'
@@ -91,7 +96,9 @@ jobs:
     name: Static analysis (SonarQube Cloud)
     runs-on: ubuntu-latest
     needs: tests
-    if: inputs.enable-tests && secrets.SONAR_TOKEN != ''
+    # secrets cannot be referenced in job-level if expressions.
+    # Use the enable-sonar input (boolean) to control this job instead.
+    if: inputs.enable-tests && inputs.enable-sonar
 
     steps:
       - name: Checkout repository

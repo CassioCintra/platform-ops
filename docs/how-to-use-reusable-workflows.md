@@ -23,7 +23,7 @@ Then add the following secrets and variables to that environment:
 | `SLACK_WEBHOOK_URL`   | Variable | Slack incoming webhook URL       |
 | `TEAMS_WEBHOOK_URL`   | Variable | Microsoft Teams webhook URL      |
 
-> All three webhook URLs use **Variables** — they are not authentication credentials and variables are easier to inspect when debugging.
+> All three webhook URLs use **Variables** ï¿½ they are not authentication credentials and variables are easier to inspect when debugging.
 
 ---
 
@@ -194,6 +194,7 @@ jobs:
       java-version: '21'
       enable-tests: true
       coverage-minimum: 90
+      enable-sonar: true  # set to false if SONAR_TOKEN is not configured
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -292,5 +293,6 @@ Default is `HIGH`.
 | `github/codeql-action/upload-sarif` | `v3`         |
 
 Versions are kept current automatically by the `dependency-update.yml` Renovate workflow.
+
 
 

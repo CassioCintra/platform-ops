@@ -88,5 +88,6 @@ jobs:
             -Dflyway.url=jdbc:postgresql://localhost:5432/${{ env.MIGRATION_DB }} \
             -Dflyway.user=${{ env.MIGRATION_USER }} \
             -Dflyway.password=${{ env.MIGRATION_PASSWORD }} \
-
             -Dflyway.locations=classpath:db/migration
+
+

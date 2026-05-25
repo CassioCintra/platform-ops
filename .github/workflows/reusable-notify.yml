@@ -131,7 +131,7 @@ jobs:
       - name: Notify Discord
         if: inputs.notify-discord
         env:
-          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SERVICE_NAME:        ${{ inputs.service-name }}
           IMAGE_TAG:           ${{ inputs.image-tag }}
           OVERALL_STATUS:      ${{ inputs.overall-status }}
@@ -145,6 +145,7 @@ jobs:
           COMMIT_SHA:          ${{ github.sha }}
           RUN_URL:             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: ./scripts/discord/send-discord.sh
+
 
 
 

@@ -102,6 +102,10 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - name: Set lowercase org name
+        id: org
+        run: echo "name=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Build application artifact
         run: ./mvnw -B -q package -DskipTests
 
@@ -119,7 +123,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ inputs.service-name }}
+          images: ${{ env.REGISTRY }}/${{ steps.org.outputs.name }}/${{ inputs.service-name }}
           tags: |
             type=raw,value=${{ needs.tag.outputs.new-tag }}
             type=raw,value=latest
@@ -151,3 +155,5 @@ jobs:
           name: ${{ inputs.service-name }} ${{ needs.tag.outputs.new-tag }}
           body: ${{ needs.tag.outputs.changelog }}
           generate_release_notes: false
+
+

@@ -24,8 +24,8 @@ on:
         default: true
     secrets:
       GHCR_TOKEN:
-        description: 'GitHub token to pull the image from GHCR'
-        required: true
+        description: 'GitHub token to pull the image from GHCR. Required when run-image-scan is true (default).'
+        required: false
 
 env:
   REGISTRY: ghcr.io
@@ -49,6 +49,7 @@ jobs:
     name: Dependency vulnerability scan (Trivy - filesystem)
     runs-on: ubuntu-latest
     permissions:
+      contents: read         # required by actions/checkout
       security-events: write
     steps:
       - name: Checkout repository

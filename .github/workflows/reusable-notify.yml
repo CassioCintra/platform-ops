@@ -136,7 +136,7 @@ jobs:
       - name: Notify Discord
         if: inputs.notify-discord
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
           SERVICE_NAME:        ${{ inputs.service-name }}
           IMAGE_TAG:           ${{ inputs.image-tag }}
           OVERALL_STATUS:      ${{ inputs.overall-status }}

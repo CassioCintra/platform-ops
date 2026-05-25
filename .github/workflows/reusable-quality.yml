@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     if: inputs.enable-tests
     permissions:
+      contents: read         # required by actions/checkout
       checks: write          # required by mikepenz/action-junit-report
       pull-requests: write   # required by madrapps/jacoco-report (PR coverage comment)
 

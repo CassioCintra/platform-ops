@@ -68,16 +68,16 @@ jobs:
     environment: notifications
 
     steps:
-      - name: Checkout infra repo (for discord scripts)
+      - name: Checkout platform-ops (for discord scripts)
         if: inputs.notify-discord
         uses: actions/checkout@v6
         with:
-          repository: ${{ github.repository }}
+          repository: CassioCintra/platform-ops
           ref: main
 
       - name: Make discord scripts executable
         if: inputs.notify-discord
-        run: chmod +x scripts/discord/*.sh
+        run: chmod +x scripts/discord/send-discord.sh scripts/discord/status-label.sh
 
       - name: Build Slack/Teams payload
         id: payload
@@ -145,5 +145,6 @@ jobs:
           COMMIT_SHA:          ${{ github.sha }}
           RUN_URL:             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: ./scripts/discord/send-discord.sh
+
 
 

@@ -89,7 +89,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
-          image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ inputs.service-name }}:${{ inputs.image-tag }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.ORG_LOWER }}/${{ inputs.service-name }}:${{ inputs.image-tag }}
           format: sarif
           output: trivy-image.sarif
           severity: ${{ inputs.fail-on-severity }},CRITICAL
@@ -123,3 +123,4 @@ jobs:
           ./mvnw -B license:check \
             -Dlicense.failIfWarning=true \
             -Dlicense.excludedScopes=test
+

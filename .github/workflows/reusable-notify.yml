@@ -56,28 +56,31 @@ on:
         required: false
         type: boolean
         default: false
+    secrets:
+      SLACK_WEBHOOK_URL:
+        description: 'Slack incoming webhook URL. Required when notify-slack is true.'
+        required: false
+      TEAMS_WEBHOOK_URL:
+        description: 'Microsoft Teams incoming webhook URL. Required when notify-teams is true.'
+        required: false
+      DISCORD_WEBHOOK_URL:
+        description: 'Discord webhook URL. Required when notify-discord is true.'
+        required: false
 
 # How secrets reach this workflow
 # ─────────────────────────────────────────────────────────────────────────────
-# This workflow does NOT declare workflow_call.secrets. Instead it relies on
-# GitHub's environment-secrets mechanism:
+# Secrets are declared in workflow_call.secrets above and must be passed by
+# the caller — either explicitly or via `secrets: inherit`.
 #
-#   1. The CALLER repository must have an environment named "notifications"
-#      (Settings → Environments → New environment → "notifications").
-#   2. SLACK_WEBHOOK_URL, TEAMS_WEBHOOK_URL and DISCORD_WEBHOOK_URL are added
-#      as *environment secrets* (not variables) in that environment.
-#   3. Because the notify job declares `environment: notifications`, GitHub
-#      injects those secrets into the job's `secrets` context automatically —
-#      no explicit secret passing via workflow_call is required.
-#
-# Reference: https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-environments
+# Store SLACK_WEBHOOK_URL, TEAMS_WEBHOOK_URL and DISCORD_WEBHOOK_URL as
+# repository secrets in platform-ops (Settings → Secrets and variables →
+# Actions) and use `secrets: inherit` in the caller pipeline.
 # ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
   notify:
     name: Send pipeline notification
     runs-on: ubuntu-latest
-    environment: notifications
     permissions:
       contents: read   # required by actions/checkout (discord scripts)
 

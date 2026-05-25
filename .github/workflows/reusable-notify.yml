@@ -56,14 +56,9 @@ on:
         required: false
         type: boolean
         default: false
-      platform-ops-repo:
-        description: 'Repository that contains the Discord notification scripts (owner/repo). Override if platform-ops was forked or renamed.'
-        required: false
-        type: string
-        default: 'CassioCintra/platform-ops'
 
-# No secrets block — all webhook URLs come from the
-# "notifications" environment defined in order-platform-infra.
+# No secrets block — all webhook URLs are environment secrets from the
+# "notifications" environment defined in the caller repo.
 # Callers do not need to pass any secrets for notifications.
 
 jobs:
@@ -71,13 +66,15 @@ jobs:
     name: Send pipeline notification
     runs-on: ubuntu-latest
     environment: notifications
+    permissions:
+      contents: read   # required by actions/checkout (discord scripts)
 
     steps:
       - name: Checkout platform-ops (for discord scripts)
         if: inputs.notify-discord
         uses: actions/checkout@v6
         with:
-          repository: ${{ inputs.platform-ops-repo }}
+          repository: CassioCintra/platform-ops
           ref: main
 
       - name: Make discord scripts executable
@@ -86,15 +83,19 @@ jobs:
 
       - name: Build Slack/Teams payload
         id: payload
+        env:
+          OVERALL_STATUS: ${{ inputs.overall-status }}
+          SERVICE_NAME:   ${{ inputs.service-name }}
+          IMAGE_TAG:      ${{ inputs.image-tag }}
         run: |
-          if [ "${{ inputs.overall-status }}" = "success" ]; then
+          if [ "$OVERALL_STATUS" = "success" ]; then
             echo "icon=:white_check_mark:" >> $GITHUB_OUTPUT
             echo "color=#2EA44F" >> $GITHUB_OUTPUT
-            echo "title=Deploy succeeded - ${{ inputs.service-name }} ${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
+            echo "title=Deploy succeeded - $SERVICE_NAME $IMAGE_TAG" >> $GITHUB_OUTPUT
           else
             echo "icon=:x:" >> $GITHUB_OUTPUT
             echo "color=#CF222E" >> $GITHUB_OUTPUT
-            echo "title=Pipeline failed - ${{ inputs.service-name }}" >> $GITHUB_OUTPUT
+            echo "title=Pipeline failed - $SERVICE_NAME" >> $GITHUB_OUTPUT
           fi
 
       - name: Notify Slack
@@ -119,24 +120,37 @@ jobs:
               ]
             }
         env:
-          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify Microsoft Teams
         if: inputs.notify-teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          TITLE:             ${{ steps.payload.outputs.title }}
+          REPO:              ${{ github.repository }}
+          SERVER_URL:        ${{ github.server_url }}
+          REF_NAME:          ${{ github.ref_name }}
+          SHA:               ${{ github.sha }}
+          RUN_ID:            ${{ github.run_id }}
         run: |
+          payload=$(jq -n \
+            --arg title      "$TITLE" \
+            --arg repo       "$REPO" \
+            --arg server_url "$SERVER_URL" \
+            --arg ref_name   "$REF_NAME" \
+            --arg sha        "$SHA" \
+            --arg run_url    "$SERVER_URL/$REPO/actions/runs/$RUN_ID" \
+            '{title: $title, text: ("**Repo:** [\($repo)](\($server_url)/\($repo)) | **Branch:** `\($ref_name)` | **Commit:** `\($sha)` | [View pipeline](\($run_url))")}')
           curl -s -o /dev/null -w "%{http_code}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "title": "${{ steps.payload.outputs.title }}",
-              "text": "**Repo:** [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}) | **Branch:** `${{ github.ref_name }}` | **Commit:** `${{ github.sha }}` | [View pipeline](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-            }' \
-            "${{ vars.TEAMS_WEBHOOK_URL }}"
+            -d "$payload" \
+            "$TEAMS_WEBHOOK_URL"
 
       - name: Notify Discord
         if: inputs.notify-discord
         env:
-          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SERVICE_NAME:        ${{ inputs.service-name }}
           IMAGE_TAG:           ${{ inputs.image-tag }}
           OVERALL_STATUS:      ${{ inputs.overall-status }}

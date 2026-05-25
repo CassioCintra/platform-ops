@@ -17,13 +17,13 @@ any notification secrets — they only need to enable the desired channel via in
 
 Then add the following secrets and variables to that environment:
 
-| Name                  | Type     | Description                      |
-|-----------------------|----------|----------------------------------|
-| `DISCORD_WEBHOOK_URL` | Variable | Discord channel webhook URL      |
-| `SLACK_WEBHOOK_URL`   | Variable | Slack incoming webhook URL       |
-| `TEAMS_WEBHOOK_URL`   | Variable | Microsoft Teams webhook URL      |
+| Name                  | Type   | Description                      |
+|-----------------------|--------|----------------------------------|
+| `DISCORD_WEBHOOK_URL` | Secret | Discord channel webhook URL      |
+| `SLACK_WEBHOOK_URL`   | Secret | Slack incoming webhook URL       |
+| `TEAMS_WEBHOOK_URL`   | Secret | Microsoft Teams webhook URL      |
 
-> All three webhook URLs use **Variables** � they are not authentication credentials and variables are easier to inspect when debugging.
+> Webhook URLs are stored as **Secrets** because they provide write access to notification channels — anyone with the URL can post messages.
 
 ---
 

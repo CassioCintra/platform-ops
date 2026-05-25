@@ -34,6 +34,8 @@ jobs:
   secret-scan:
     name: Secret detection (Gitleaks)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -110,6 +112,8 @@ jobs:
   license-scan:
     name: License compliance (Maven)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

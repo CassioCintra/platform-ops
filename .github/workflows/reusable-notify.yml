@@ -57,9 +57,21 @@ on:
         type: boolean
         default: false
 
-# No secrets block — all webhook URLs are environment secrets from the
-# "notifications" environment defined in the caller repo.
-# Callers do not need to pass any secrets for notifications.
+# How secrets reach this workflow
+# ─────────────────────────────────────────────────────────────────────────────
+# This workflow does NOT declare workflow_call.secrets. Instead it relies on
+# GitHub's environment-secrets mechanism:
+#
+#   1. The CALLER repository must have an environment named "notifications"
+#      (Settings → Environments → New environment → "notifications").
+#   2. SLACK_WEBHOOK_URL, TEAMS_WEBHOOK_URL and DISCORD_WEBHOOK_URL are added
+#      as *environment secrets* (not variables) in that environment.
+#   3. Because the notify job declares `environment: notifications`, GitHub
+#      injects those secrets into the job's `secrets` context automatically —
+#      no explicit secret passing via workflow_call is required.
+#
+# Reference: https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-environments
+# ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
   notify:
@@ -89,14 +101,17 @@ jobs:
           IMAGE_TAG:      ${{ inputs.image-tag }}
         run: |
           if [ "$OVERALL_STATUS" = "success" ]; then
-            echo "icon=:white_check_mark:" >> $GITHUB_OUTPUT
-            echo "color=#2EA44F" >> $GITHUB_OUTPUT
-            echo "title=Deploy succeeded - $SERVICE_NAME $IMAGE_TAG" >> $GITHUB_OUTPUT
+            echo "icon=:white_check_mark:" >> "$GITHUB_OUTPUT"
+            echo "color=#2EA44F"           >> "$GITHUB_OUTPUT"
+            title="Deploy succeeded - ${SERVICE_NAME} ${IMAGE_TAG}"
           else
-            echo "icon=:x:" >> $GITHUB_OUTPUT
-            echo "color=#CF222E" >> $GITHUB_OUTPUT
-            echo "title=Pipeline failed - $SERVICE_NAME" >> $GITHUB_OUTPUT
+            echo "icon=:x:"    >> "$GITHUB_OUTPUT"
+            echo "color=#CF222E" >> "$GITHUB_OUTPUT"
+            title="Pipeline failed - ${SERVICE_NAME}"
           fi
+          # Multiline-safe output: handles special chars (quotes, newlines) in
+          # service-name or image-tag without corrupting the GITHUB_OUTPUT format.
+          printf 'title<<GHEOF\n%s\nGHEOF\n' "$title" >> "$GITHUB_OUTPUT"
 
       - name: Notify Slack
         if: inputs.notify-slack

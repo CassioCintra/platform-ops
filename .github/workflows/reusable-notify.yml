@@ -56,6 +56,11 @@ on:
         required: false
         type: boolean
         default: false
+      platform-ops-repo:
+        description: 'Repository that contains the Discord notification scripts (owner/repo). Override if platform-ops was forked or renamed.'
+        required: false
+        type: string
+        default: 'CassioCintra/platform-ops'
 
 # No secrets block — all webhook URLs come from the
 # "notifications" environment defined in order-platform-infra.
@@ -72,7 +77,7 @@ jobs:
         if: inputs.notify-discord
         uses: actions/checkout@v6
         with:
-          repository: CassioCintra/platform-ops
+          repository: ${{ inputs.platform-ops-repo }}
           ref: main
 
       - name: Make discord scripts executable

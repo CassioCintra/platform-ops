@@ -49,6 +49,9 @@ jobs:
     name: Unit and integration tests
     runs-on: ubuntu-latest
     if: inputs.enable-tests
+    permissions:
+      checks: write          # required by mikepenz/action-junit-report
+      pull-requests: write   # required by madrapps/jacoco-report (PR coverage comment)
 
     steps:
       - name: Checkout repository

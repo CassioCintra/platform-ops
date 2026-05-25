@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: 'HIGH'
+      run-image-scan:
+        description: 'Whether to run the image vulnerability scan. Set to false when the image does not exist yet (e.g. security-source stage, before cd).'
+        required: false
+        type: boolean
+        default: true
     secrets:
       GHCR_TOKEN:
         description: 'GitHub token to pull the image from GHCR'
@@ -43,6 +48,8 @@ jobs:
   dependency-scan:
     name: Dependency vulnerability scan (Trivy - filesystem)
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -67,6 +74,9 @@ jobs:
   image-scan:
     name: Image vulnerability scan (Trivy - image)
     runs-on: ubuntu-latest
+    if: inputs.run-image-scan
+    permissions:
+      security-events: write
     steps:
       - name: Set lowercase org name
         id: org

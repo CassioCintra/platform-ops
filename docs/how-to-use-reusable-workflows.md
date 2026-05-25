@@ -204,6 +204,7 @@ jobs:
     with:
       service-name: order-service
       fail-on-severity: HIGH
+      run-image-scan: false   # image does not exist yet at this stage
     secrets:
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
 

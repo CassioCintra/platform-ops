@@ -121,6 +121,15 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - name: Compile project
+        run: ./mvnw -B compile -DskipTests
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v5
+        with:
+          name: coverage-report
+          path: target/site/jacoco/
+
       - name: Analyze with SonarQube Cloud
         uses: SonarSource/sonarqube-scan-action@v4
         env:

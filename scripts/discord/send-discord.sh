@@ -65,8 +65,17 @@ payload="$(cat <<EOF
 EOF
 )"
 
-curl -sS -o /dev/null -w "%{http_code}" \
+echo "=== Discord payload ==="
+echo "$payload" | jq .
+
+echo "=== Sending to Discord ==="
+http_code=$(curl -sS -o /tmp/discord_response.txt -w "%{http_code}" \
   -X POST \
   -H "Content-Type: application/json" \
   -d "$payload" \
-  "$DISCORD_WEBHOOK_URL"
+  "$DISCORD_WEBHOOK_URL")
+
+echo "HTTP status: $http_code"
+echo "Response body: $(cat /tmp/discord_response.txt)"
+
+[ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ] || { echo "::error::Discord webhook returned $http_code"; exit 1; }

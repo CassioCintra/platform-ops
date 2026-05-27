@@ -85,6 +85,34 @@ jobs:
       contents: read   # required by actions/checkout (discord scripts)
 
     steps:
+      - name: Log inputs
+        run: |
+          echo "=== Notify inputs ==="
+          echo "service-name:      ${{ inputs.service-name }}"
+          echo "image-tag:         ${{ inputs.image-tag }}"
+          echo "overall-status:    ${{ inputs.overall-status }}"
+          echo "tests-result:      ${{ inputs.tests-result }}"
+          echo "quality-result:    ${{ inputs.quality-result }}"
+          echo "security-result:   ${{ inputs.security-result }}"
+          echo "migration-result:  ${{ inputs.migration-result }}"
+          echo "cd-result:         ${{ inputs.cd-result }}"
+          echo "notify-slack:      ${{ inputs.notify-slack }}"
+          echo "notify-teams:      ${{ inputs.notify-teams }}"
+          echo "notify-discord:    ${{ inputs.notify-discord }}"
+          echo "caller-repo:       ${{ github.repository }}"
+          echo "caller-ref:        ${{ github.ref_name }}"
+
+      - name: Log secrets availability
+        run: |
+          echo "=== Secrets check ==="
+          if [ -z "$SLACK_WEBHOOK_URL" ];   then echo "SLACK_WEBHOOK_URL:   NOT SET"; else echo "SLACK_WEBHOOK_URL:   set (${#SLACK_WEBHOOK_URL} chars)"; fi
+          if [ -z "$TEAMS_WEBHOOK_URL" ];   then echo "TEAMS_WEBHOOK_URL:   NOT SET"; else echo "TEAMS_WEBHOOK_URL:   set (${#TEAMS_WEBHOOK_URL} chars)"; fi
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then echo "DISCORD_WEBHOOK_URL: NOT SET"; else echo "DISCORD_WEBHOOK_URL: set (${#DISCORD_WEBHOOK_URL} chars)"; fi
+        env:
+          SLACK_WEBHOOK_URL:   ${{ secrets.SLACK_WEBHOOK_URL }}
+          TEAMS_WEBHOOK_URL:   ${{ secrets.TEAMS_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
       - name: Checkout platform-ops (for discord scripts)
         if: inputs.notify-discord
         uses: actions/checkout@v6
@@ -94,7 +122,10 @@ jobs:
 
       - name: Make discord scripts executable
         if: inputs.notify-discord
-        run: chmod +x scripts/discord/send-discord.sh scripts/discord/status-label.sh
+        run: |
+          chmod +x scripts/discord/send-discord.sh scripts/discord/status-label.sh
+          echo "=== Discord scripts after checkout ==="
+          ls -la scripts/discord/
 
       - name: Build Slack/Teams payload
         id: payload
@@ -103,6 +134,7 @@ jobs:
           SERVICE_NAME:   ${{ inputs.service-name }}
           IMAGE_TAG:      ${{ inputs.image-tag }}
         run: |
+          echo "=== Building Slack/Teams payload ==="
           if [ "$OVERALL_STATUS" = "success" ]; then
             echo "icon=:white_check_mark:" >> "$GITHUB_OUTPUT"
             echo "color=#2EA44F"           >> "$GITHUB_OUTPUT"
@@ -115,6 +147,7 @@ jobs:
           # Multiline-safe output: handles special chars (quotes, newlines) in
           # service-name or image-tag without corrupting the GITHUB_OUTPUT format.
           printf 'title<<GHEOF\n%s\nGHEOF\n' "$title" >> "$GITHUB_OUTPUT"
+          echo "title: $title"
 
       - name: Notify Slack
         if: inputs.notify-slack
@@ -152,6 +185,7 @@ jobs:
           SHA:               ${{ github.sha }}
           RUN_ID:            ${{ github.run_id }}
         run: |
+          echo "=== Sending Teams notification ==="
           payload=$(jq -n \
             --arg title      "$TITLE" \
             --arg repo       "$REPO" \
@@ -160,10 +194,12 @@ jobs:
             --arg sha        "$SHA" \
             --arg run_url    "$SERVER_URL/$REPO/actions/runs/$RUN_ID" \
             '{title: $title, text: ("**Repo:** [\($repo)](\($server_url)/\($repo)) | **Branch:** `\($ref_name)` | **Commit:** `\($sha)` | [View pipeline](\($run_url))")}')
-          curl -s -o /dev/null -w "%{http_code}" \
+          http_code=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Content-Type: application/json" \
             -d "$payload" \
-            "$TEAMS_WEBHOOK_URL"
+            "$TEAMS_WEBHOOK_URL")
+          echo "Teams response: $http_code"
+          [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ] || { echo "::error::Teams webhook returned $http_code"; exit 1; }
 
       - name: Notify Discord
         if: inputs.notify-discord
@@ -181,7 +217,9 @@ jobs:
           BRANCH:              ${{ github.ref_name }}
           COMMIT_SHA:          ${{ github.sha }}
           RUN_URL:             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: ./scripts/discord/send-discord.sh
+        run: |
+          echo "=== Sending Discord notification ==="
+          ./scripts/discord/send-discord.sh
 
 
 

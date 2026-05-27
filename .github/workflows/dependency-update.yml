@@ -22,7 +22,4 @@ jobs:
         with:
           configurationFile: .github/renovate.json
         env:
-          # RENOVATE_TOKEN requires a PAT with repo scope.
-          # The default GITHUB_TOKEN cannot open PRs on protected branches.
-          # Create a PAT and add it as a repository secret named RENOVATE_TOKEN.
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}

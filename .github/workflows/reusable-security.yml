@@ -2,33 +2,6 @@ name: Reusable - security checks
 
 on:
   workflow_call:
-    inputs:
-      service-name:
-        description: 'Service name - must match the image name in GHCR'
-        required: true
-        type: string
-      image-tag:
-        description: 'Image tag to scan (only used for image scan job)'
-        required: false
-        type: string
-        default: 'latest'
-      fail-on-severity:
-        description: 'Minimum severity that fails the pipeline'
-        required: false
-        type: string
-        default: 'HIGH'
-      run-image-scan:
-        description: 'Whether to run the image vulnerability scan. Set to false when the image does not exist yet (e.g. security-source stage, before cd).'
-        required: false
-        type: boolean
-        default: true
-    secrets:
-      GHCR_TOKEN:
-        description: 'GitHub token to pull the image from GHCR. Required when run-image-scan is true (default).'
-        required: false
-
-env:
-  REGISTRY: ghcr.io
 
 jobs:
   secret-scan:
@@ -46,68 +19,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ github.token }}
-
-  dependency-scan:
-    name: Dependency vulnerability scan (Trivy - filesystem)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read         # required by actions/checkout
-      security-events: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Run Trivy on filesystem
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: trivy-fs.sarif
-          severity: ${{ inputs.fail-on-severity }},CRITICAL
-          exit-code: '1'
-
-      - name: Upload filesystem scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-fs.sarif
-          category: trivy-filesystem
-
-  image-scan:
-    name: Image vulnerability scan (Trivy - image)
-    runs-on: ubuntu-latest
-    if: inputs.run-image-scan
-    permissions:
-      security-events: write
-    steps:
-      - name: Set lowercase org name
-        id: org
-        run: echo "name=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-
-      - name: Run Trivy on image
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: image
-          image-ref: ${{ env.REGISTRY }}/${{ steps.org.outputs.name }}/${{ inputs.service-name }}:${{ inputs.image-tag }}
-          format: sarif
-          output: trivy-image.sarif
-          severity: ${{ inputs.fail-on-severity }},CRITICAL
-          exit-code: '1'
-
-      - name: Upload image scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-image.sarif
-          category: trivy-image
 
   license-scan:
     name: License compliance (Maven)

@@ -284,7 +284,7 @@ Default is `HIGH`.
 | `softprops/action-gh-release`       | `v3`         |
 | `slackapi/slack-github-action`      | `v3.0.1`     |
 | `stefanzweifel/git-auto-commit-action` | `v7`      |
-| `renovatebot/github-action`         | `v46`        |
+| `renovatebot/github-action`         | `v46.1.14`   |
 | `mathieudutour/github-tag-action`   | `v6.2`       |
 | `gitleaks/gitleaks-action`          | `v2`         |
 | `hadolint/hadolint-action`          | `v3.1.0`     |
@@ -294,6 +294,5 @@ Default is `HIGH`.
 | `github/codeql-action/upload-sarif` | `v3`         |
 
 Versions are kept current automatically by the `dependency-update.yml` Renovate workflow.
-
 
 

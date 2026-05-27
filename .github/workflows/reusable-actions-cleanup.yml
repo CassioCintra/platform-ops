@@ -35,8 +35,10 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repository
+      - name: Checkout platform-ops
         uses: actions/checkout@v6
+        with:
+          repository: CassioCintra/platform-ops
 
       - name: Delete old workflow runs
         env:

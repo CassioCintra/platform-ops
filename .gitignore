@@ -19,3 +19,7 @@ docker/keycloak/data/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# AI
+.ai

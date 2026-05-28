@@ -34,11 +34,7 @@ json_escape() {
 }
 
 service="$(json_escape "${SERVICE_NAME:-unknown}")"
-image_tag="$(json_escape "${IMAGE_TAG:-}")"
 run_url="$(json_escape "${RUN_URL:-}")"
-repo="$(json_escape "${REPO:-}")"
-branch="$(json_escape "${BRANCH:-main}")"
-commit="$(json_escape "${COMMIT_SHA:-}")"
 short_sha="${COMMIT_SHA:0:7}"
 
 table_line() {
@@ -67,17 +63,19 @@ ${table}
 # ── Build embed payload ───────────────────────────────────────────────────────
 payload="$(cat <<EOF
 {
-  "content": null,
+  "content": "@everyone",
   "embeds": [
     {
-      "title": "${status_overall} ${service}",
+      "title": "${status_overall} - ${service}",
       "url": "${run_url}",
       "color": ${color},
       "description": "${description}",
       "footer": { "text": "CI/CD Result" }
     }
   ],
-  "allowed_mentions": { "parse": [] }
+  "allowed_mentions": {
+    "parse": ["everyone"]
+  }
 }
 EOF
 )"

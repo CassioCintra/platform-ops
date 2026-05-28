@@ -36,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     outputs:
       new-tag: ${{ steps.bump.outputs.new_tag }}
       new-version: ${{ steps.strip.outputs.version }}
@@ -127,7 +129,7 @@ jobs:
 
       - name: Extract image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ steps.org.outputs.name }}/${{ inputs.service-name }}
           tags: |

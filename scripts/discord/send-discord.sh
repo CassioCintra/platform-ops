@@ -6,12 +6,16 @@ set -euo pipefail
 # ── Status labels ─────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-status_tests="$("$SCRIPT_DIR/status-label.sh"    "${TESTS_RESULT:-unknown}")"
-status_quality="$("$SCRIPT_DIR/status-label.sh"  "${QUALITY_RESULT:-unknown}")"
-status_security="$("$SCRIPT_DIR/status-label.sh" "${SECURITY_RESULT:-unknown}")"
-status_migration="$("$SCRIPT_DIR/status-label.sh" "${MIGRATION_RESULT:-skipped}")"
-status_cd="$("$SCRIPT_DIR/status-label.sh"       "${CD_RESULT:-unknown}")"
-status_overall="$("$SCRIPT_DIR/status-label.sh"  "${OVERALL_STATUS:-unknown}")"
+# With emoji — used in the embed title only
+status_overall="$("$SCRIPT_DIR/status-label.sh" "${OVERALL_STATUS:-unknown}")"
+
+# Text-only — used inside the code block table so columns align correctly
+status_text() { printf '%s' "${1:-unknown}"; }
+status_tests="$(status_text    "${TESTS_RESULT:-unknown}")"
+status_quality="$(status_text  "${QUALITY_RESULT:-unknown}")"
+status_security="$(status_text "${SECURITY_RESULT:-unknown}")"
+status_migration="$(status_text "${MIGRATION_RESULT:-skipped}")"
+status_cd="$(status_text       "${CD_RESULT:-unknown}")"
 
 # ── Embed color by overall status ─────────────────────────────────────────────
 case "${OVERALL_STATUS:-unknown}" in
@@ -37,6 +41,29 @@ branch="$(json_escape "${BRANCH:-main}")"
 commit="$(json_escape "${COMMIT_SHA:-}")"
 short_sha="${COMMIT_SHA:0:7}"
 
+table_line() {
+  local label="$1"
+  local value="$2"
+  printf "%-${col}s %s\n" "${label}" "${value}"
+}
+
+table="$(cat <<EOF
+$(table_line "Repository"   "${REPO:-unknown}")
+$(table_line "Branch"       "${BRANCH:-main}")
+$(table_line "Commit"       "${short_sha}")
+$(table_line "Tests"        "${status_tests}")
+$(table_line "Quality"      "${status_quality}")
+$(table_line "Security"     "${status_security}")
+$(table_line "DB migration" "${status_migration}")
+$(table_line "CD"           "${status_cd}")
+$(table_line "Image tag"    "${IMAGE_TAG:-}")
+EOF
+)"
+
+description="$(json_escape "\`\`\`
+${table}
+\`\`\`")"
+
 # ── Build embed payload ───────────────────────────────────────────────────────
 payload="$(cat <<EOF
 {
@@ -46,27 +73,14 @@ payload="$(cat <<EOF
       "title": "${status_overall} ${service}",
       "url": "${run_url}",
       "color": ${color},
-      "fields": [
-        { "name": "Repository",  "value": "${repo}",         "inline": true },
-        { "name": "Branch",      "value": "\`${branch}\`",   "inline": true },
-        { "name": "Commit",      "value": "\`${short_sha}\`","inline": true },
-        { "name": "Tests",       "value": "${status_tests}",    "inline": true },
-        { "name": "Quality",     "value": "${status_quality}",  "inline": true },
-        { "name": "Security",    "value": "${status_security}", "inline": true },
-        { "name": "DB migration","value": "${status_migration}","inline": true },
-        { "name": "CD",          "value": "${status_cd}",       "inline": true },
-        { "name": "Image tag",   "value": "\`${image_tag}\`",   "inline": true }
-      ],
-      "footer": { "text": "order-platform CI/CD" }
+      "description": "${description}",
+      "footer": { "text": "CI/CD Result" }
     }
   ],
   "allowed_mentions": { "parse": [] }
 }
 EOF
 )"
-
-echo "=== Discord payload ==="
-echo "$payload" | jq .
 
 echo "=== Sending to Discord ==="
 http_code=$(curl -sS -o /tmp/discord_response.txt -w "%{http_code}" \

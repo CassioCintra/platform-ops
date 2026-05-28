@@ -37,6 +37,8 @@ service="$(json_escape "${SERVICE_NAME:-unknown}")"
 run_url="$(json_escape "${RUN_URL:-}")"
 short_sha="${COMMIT_SHA:0:7}"
 
+col=14
+
 table_line() {
   local label="$1"
   local value="$2"

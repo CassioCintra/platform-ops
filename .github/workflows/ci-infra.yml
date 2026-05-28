@@ -25,30 +25,30 @@ jobs:
         run: docker compose up -d postgres kafka keycloak
 
       - name: Wait for PostgreSQL
-        uses: nick-fields/retry@v3
-        with:
-          timeout_seconds: 30
-          max_attempts: 5
-          command: docker compose exec -T postgres pg_isready -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }}
-        env:
-          POSTGRES_USER: order_user
-          POSTGRES_DB: order_platform
+        run: |
+          for i in $(seq 1 10); do
+            docker compose exec -T postgres pg_isready -U order_user -d order_platform && break
+            echo "Attempt $i/10 failed, retrying in 5s..."
+            sleep 5
+          done
 
       - name: Wait for Kafka
-        uses: nick-fields/retry@v3
-        with:
-          timeout_seconds: 30
-          max_attempts: 8
-          command: docker compose exec -T kafka /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1
+        run: |
+          for i in $(seq 1 12); do
+            docker compose exec -T kafka /opt/kafka/bin/kafka-broker-api-versions.sh \
+              --bootstrap-server localhost:9092 > /dev/null 2>&1 && break
+            echo "Attempt $i/12 failed, retrying in 5s..."
+            sleep 5
+          done
 
       - name: Wait for Keycloak
-        uses: nick-fields/retry@v3
-        with:
-          timeout_seconds: 60
-          max_attempts: 15
-          # Health endpoint is on management port 9000 (KC_HEALTH_ENABLED=true)
-          # Called from the runner — Keycloak container has no HTTP client installed
-          command: curl -sf -o /dev/null http://localhost:9000/health/ready
+        run: |
+          for i in $(seq 1 20); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' order-keycloak 2>/dev/null || echo "not_found")
+            [ "$status" = "healthy" ] && break
+            echo "Attempt $i/20: status=$status, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Print container logs on failure
         if: failure()

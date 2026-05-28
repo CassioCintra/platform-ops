@@ -4,8 +4,8 @@ on:
   workflow_call:
 
 jobs:
-  secret-scan:
-    name: Secret detection (Gitleaks)
+  security-checks:
+    name: Secret detection + License compliance
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -19,15 +19,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ github.token }}
-
-  license-scan:
-    name: License compliance (Maven)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
 
       - name: Set up JDK
         uses: actions/setup-java@v5

@@ -36,8 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     outputs:
       new-tag: ${{ steps.bump.outputs.new_tag }}
       new-version: ${{ steps.strip.outputs.version }}
@@ -49,15 +47,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Calculate next semver tag (dry run — does not push)
+      - name: Calculate next semver tag
         id: bump
-        uses: mathieudutour/github-tag-action@v6.2
+        uses: CassioCintra/platform-ops/.github/actions/calculate-semver@main
         with:
-          github_token: ${{ secrets.GHCR_TOKEN }}
-          default_bump: patch
-          tag_prefix: v
-          release_branches: main
-          dry_run: true
+          tag-prefix: v
+          default-bump: patch
 
       - name: Strip v prefix from tag (e.g. v1.2.3 to 1.2.3)
         id: strip

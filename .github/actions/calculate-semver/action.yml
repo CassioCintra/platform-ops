@@ -1,0 +1,29 @@
+name: Calculate semver tag
+description: Calculates the next semver tag from conventional commits (no push)
+
+inputs:
+  tag-prefix:
+    description: 'Prefix for version tags'
+    default: 'v'
+  default-bump:
+    description: 'Default bump type when no conventional commit matches (major|minor|patch)'
+    default: 'patch'
+
+outputs:
+  new_tag:
+    description: 'Next version tag (e.g. v1.2.3)'
+    value: ${{ steps.calc.outputs.new_tag }}
+  changelog:
+    description: 'Formatted changelog for the release'
+    value: ${{ steps.calc.outputs.changelog }}
+
+runs:
+  using: composite
+  steps:
+    - name: Calculate next semver
+      id: calc
+      shell: bash
+      run: bash "${{ github.action_path }}/calculate-semver.sh"
+      env:
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
+        DEFAULT_BUMP: ${{ inputs.default-bump }}

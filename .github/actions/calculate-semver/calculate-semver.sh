@@ -63,6 +63,6 @@ CHANGELOG=""
 {
   echo "new_tag=${NEW_TAG}"
   echo "changelog<<SEMVER_EOF"
-  printf "%b" "$CHANGELOG"
+  printf "%b\n" "$CHANGELOG"
   echo "SEMVER_EOF"
 } >> "${GITHUB_OUTPUT}"

@@ -1,0 +1,91 @@
+# Consul com ACL integrado ao ms-auth (auth method JWT).
+#
+# Os serviços trocam o JWT do ms-auth (client_credentials) por um token temporário do Consul:
+#   scope flags:read  -> papel flags-reader (leitura em feature-flags/)
+#   scope flags:write -> papel flags-writer (escrita em feature-flags/)
+#
+# Uso:
+#   docker compose -f docker-compose.consul.yml up -d --build
+#   ./scripts/consul/verify-jwt-login.sh
+
+services:
+
+  # ── PostgreSQL do ms-auth ───────────────────────────────────────────────────
+  auth-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ms_auth
+      POSTGRES_USER: ${AUTH_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-postgres}
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER:-postgres} -d ms_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - switchboard-net
+
+  # ── ms-auth ─────────────────────────────────────────────────────────────────
+  ms-auth:
+    image: switchboard/ms-auth:latest
+    build:
+      context: ../ms-auth
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-postgres:5432/ms_auth
+      SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD:-postgres}
+      # Mesmo valor do BoundIssuer do auth method no Consul
+      AUTH_ISSUER_URI: http://ms-auth:9000
+    ports:
+      - "9000:9000"
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+    networks:
+      - switchboard-net
+
+  # ── Consul (modo dev com ACL) ───────────────────────────────────────────────
+  # Modo dev: um nó só e dados em memória. Ao recriar o container, rode o consul-setup de novo.
+  consul:
+    image: hashicorp/consul:2.0.4
+    command:
+      - agent
+      - -dev
+      - -client=0.0.0.0
+      - -hcl=acl { enabled = true, default_policy = "deny", tokens { initial_management = "${CONSUL_MANAGEMENT_TOKEN:-dev-management-token}" } }
+    ports:
+      - "8500:8500"   # UI e API: http://localhost:8500
+    healthcheck:
+      # /v1/status/leader não exige token de ACL
+      test: ["CMD", "wget", "-qO-", "http://localhost:8500/v1/status/leader"]
+      interval: 2s
+      retries: 15
+    networks:
+      - switchboard-net
+
+  # ── Configuração do ACL (roda uma vez e sai) ────────────────────────────────
+  consul-setup:
+    image: hashicorp/consul:2.0.4
+    entrypoint: ["sh", "/setup.sh"]
+    environment:
+      CONSUL_HTTP_ADDR: http://consul:8500
+      CONSUL_HTTP_TOKEN: ${CONSUL_MANAGEMENT_TOKEN:-dev-management-token}
+      MS_AUTH_ISSUER: http://ms-auth:9000
+    volumes:
+      - ./docker/consul/setup.sh:/setup.sh:ro
+    depends_on:
+      consul:
+        condition: service_healthy
+      ms-auth:
+        condition: service_healthy
+    networks:
+      - switchboard-net
+
+volumes:
+  auth_postgres_data:
+
+networks:
+  switchboard-net:
+    driver: bridge

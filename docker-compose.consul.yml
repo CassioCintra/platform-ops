@@ -1,8 +1,9 @@
 # Consul com ACL integrado ao ms-auth (auth method JWT).
 #
 # Os serviços trocam o JWT do ms-auth (client_credentials) por um token temporário do Consul:
-#   scope flags:read  -> papel flags-reader (leitura em feature-flags/)
+#   scope flags:read  -> policy flags-read-<workspace_id> (leitura só em feature-flags/<workspace_id>/)
 #   scope flags:write -> papel flags-writer (escrita em feature-flags/)
+#   scope flags:admin -> papel flags-administrator (cria as policies de leitura por workspace)
 #
 # Uso:
 #   docker compose -f docker-compose.consul.yml up -d --build
